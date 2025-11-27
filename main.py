@@ -5,19 +5,15 @@ from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# --- Завантаження API ключа ---
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- Зчитування системного prompt ---
 with open("prompt/system_prompt.txt") as f:
     system_prompt = f.read()
 
-# --- Зчитування тестових даних ---
 df = pd.read_csv("data/test_conversations.csv")
 df.columns = df.columns.str.strip()  # обрізаємо пробіли у заголовках
 
-# --- Функція для парсингу рядка атрибутів у словник ---
 def parse_attributes(text):
     d = {}
     for p in text.split("|"):
@@ -26,14 +22,12 @@ def parse_attributes(text):
             d[k.strip()] = v.strip()
     return d
 
-# --- Нормалізація телефону ---
 def normalize_phone(phone):
-    digits = re.sub(r'\D', '', phone)  # залишаємо тільки цифри
+    digits = re.sub(r'\D', '', phone)  
     if len(digits) == 10:
         return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
-    return phone  # якщо не 10 цифр, повертаємо як є
+    return phone  
 
-# --- Нормалізація дати ---
 def normalize_date(date_str):
     try:
         dt = datetime.strptime(date_str, "%d-%b-%Y")
@@ -43,9 +37,8 @@ def normalize_date(date_str):
             dt = datetime.strptime(date_str, "%d/%m/%Y")
             return dt.strftime("%d-%b-%Y")
         except ValueError:
-            return date_str  # якщо не вдалось, повертаємо як є
+            return date_str  
 
-# --- Функція для нормалізації всіх атрибутів ---
 def normalize_attributes(d):
     d = d.copy()
     if 'Phone number' in d:
@@ -70,20 +63,17 @@ for idx, row in df.iterrows():
     actual = response.choices[0].message.content.strip()
     actuals.append(actual)
 
-    # Парсимо рядки у словники
     actual_dict = normalize_attributes(parse_attributes(actual))
     expected_dict = normalize_attributes(parse_attributes(expected))
 
     is_match = actual_dict == expected_dict
     status.append(is_match)
 
-    # Друк для дебагу
     print(f"Row {idx+1}: Match={is_match}")
     print("Expected:", expected_dict)
     print("Actual  :", actual_dict)
     print("-"*50)
 
-# --- Збереження результатів ---
 df['actual_attributes'] = actuals
 df['status'] = status
 accuracy = sum(status)/len(status)*100
